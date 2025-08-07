@@ -11,4 +11,5 @@
   "dependencies": {
     "@vercel/node": "^5.3.11"
   }
+  ,"type": "module"
 }
