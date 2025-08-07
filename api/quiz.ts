@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { log } from 'console';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -32,19 +33,23 @@ Respond only with a JSON object.
     });
 
     const json = await aiRes.json();
+    console.log(json);
     const content = json.choices?.[0]?.message?.content || '{}';
-    let quiz;
+    console.log(content);
+    let quiz = null;
+    let parseError = null;
     try {
       quiz = JSON.parse(content);
-      res.status(200).json(quiz);
-    } catch (parseErr) {
-      // Return the raw content and OpenAI response for debugging
-      res.status(200).json({
-        error: 'Failed to parse content as JSON',
-        content,
-        openaiResponse: json
-      });
+       console.log(quiz);
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
     }
+    res.status(200).json({
+      quiz,
+      parseError,
+      content,
+      openaiResponse: json
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch AI response' });
   }
