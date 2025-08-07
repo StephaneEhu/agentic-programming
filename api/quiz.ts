@@ -25,9 +25,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const json = await aiRes.json();
     const content = json.choices?.[0]?.message?.content || '{}';
-    const quiz = JSON.parse(content);
-
-    res.status(200).json(quiz);
+    let quiz;
+    try {
+      quiz = JSON.parse(content);
+      res.status(200).json(quiz);
+    } catch (parseErr) {
+      // Return the raw content and OpenAI response for debugging
+      res.status(200).json({
+        error: 'Failed to parse content as JSON',
+        content,
+        openaiResponse: json
+      });
+    }
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch AI response' });
   }
