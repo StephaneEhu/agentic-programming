@@ -26,7 +26,7 @@ Respond only with a JSON object.
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'chatgpt-4o-latest',
+        model: 'gpt-4.1',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
       }),
