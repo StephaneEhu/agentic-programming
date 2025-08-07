@@ -7,7 +7,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Missing OpenAI API key' });
   }
 
-  const prompt = `You are an AWS instructor...`;
+  const prompt = `
+You are an AWS instructor. Generate one multiple-choice question (MCQ) focused ONLY on AWS cloud benefits.
+Return a JSON object with:
+- question: The question text
+- options: An array of 4 choices (1 correct + 3 distractors)
+- answer: The correct answer (must match one of the options exactly)
+
+Respond only with a JSON object.
+`;
 
   try {
     const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
