@@ -1,0 +1,14 @@
+{
+  "name": "agentic-programming",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.121",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "@vercel/node": "^5.3.11"
+  }
+}
