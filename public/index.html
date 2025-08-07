@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AWS Cloud Benefits Quiz (AI-Powered)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #0073bb;
+    }
+    .question {
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #0073bb;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    #result {
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>AWS Cloud Benefits Quiz (AI-Powered)</h1>
+  <div id="quiz">Loading question...</div>
+  <div id="result"></div>
+  <button onclick="loadQuestion()">Next Question</button>
+</div>
+
+<script>
+  async function loadQuestion() {
+    document.getElementById("quiz").innerHTML = "Loading question...";
+    document.getElementById("result").textContent = "";
+
+    try {
+      const res = await fetch("/api/quiz");
+      const data = await res.json();
+
+      const { question, options, answer } = data;
+      let html = `<div class='question'><p>${question}</p>`;
+      options.forEach(opt => {
+        html += `<label><input type='radio' name='answer' value='${opt}'> ${opt}</label>`;
+      });
+      html += `<button onclick="checkAnswer('${answer.replace(/'/g, "\\'")}')">Submit Answer</button></div>`;
+      document.getElementById("quiz").innerHTML = html;
+    } catch (err) {
+      document.getElementById("quiz").innerHTML = "Failed to load question.";
+    }
+  }
+
+  function checkAnswer(correct) {
+    const selected = document.querySelector("input[name='answer']:checked");
+    const result = document.getElementById("result");
+    if (!selected) {
+      result.textContent = "Please select an answer.";
+      result.style.color = "orange";
+      return;
+    }
+    if (selected.value === correct) {
+      result.textContent = "✅ Correct!";
+      result.style.color = "green";
+    } else {
+      result.textContent = `❌ Incorrect. Correct answer: ${correct}`;
+      result.style.color = "red";
+    }
+  }
+  window.onload = loadQuestion;
+</script>
+</body>
+</html>
