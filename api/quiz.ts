@@ -23,7 +23,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
       });
       const geminiJson = await geminiRes.json();
-      const geminiContent = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      let geminiContent = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      // Remove Markdown code block if present
+      geminiContent = geminiContent.trim();
+      if (geminiContent.startsWith('```')) {
+        geminiContent = geminiContent.replace(/^```[a-zA-Z]*\n?|```$/g, '').trim();
+      }
       let geminiQuiz = null;
       let geminiParseError = null;
       try {
