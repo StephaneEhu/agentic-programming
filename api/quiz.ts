@@ -9,13 +9,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const prompt = `
-You are an AWS instructor. Generate one multiple-choice question (MCQ) focused ONLY on AWS cloud benefits.
-Return a JSON object with:
-- question: The question text
-- options: An array of 4 choices (1 correct + 3 distractors)
-- answer: The correct answer (must match one of the options exactly)
+You are an AWS instructor. Generate ONE multiple-choice question (MCQ) on ONE of the following topics (pick randomly for each request):
+• AWS Cloud concepts
+• Security and compliance in the AWS Cloud
+• Core AWS services
+• Economics of the AWS Cloud
 
-Respond only with a JSON object.
+The question must be clear, relevant, and technically correct.
+
+Return ONLY a valid JSON object with:
+- question: The question text
+- options: An array of 4 OR 5 answer choices
+    • If there are 4 options: exactly 1 correct answer + 3 distractors
+    • If there are 5 options: exactly 2 correct answers + 3 distractors
+- answer: 
+    • If there is 1 correct answer: a string matching exactly one of the options
+    • If there are 2 correct answers: an array containing exactly two strings, each matching one of the options
+
+Constraints:
+- The question must NOT ask "Which of the following is NOT..." — always ask positively
+- Distractors must be plausible but clearly incorrect to someone with AWS knowledge
+- The JSON must be valid and self-contained, without extra commentary, code fences, or Markdown
 `;
 
   async function fetchGeminiQuiz() {
