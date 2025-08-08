@@ -4,47 +4,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-  if (!OPENAI_API_KEY) {
-    return res.status(500).json({ error: 'Missing OpenAI API key' });
-  }
-
-  async function fetchGeminiQuiz(prompt: string) {
-    if (!GEMINI_API_KEY) {
-      return { error: 'Missing Gemini API key' };
-    }
-    try {
-      const geminiRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + GEMINI_API_KEY, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-      const geminiJson = await geminiRes.json();
-      let geminiContent = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-      // Remove Markdown code block if present
-      geminiContent = geminiContent.trim();
-      if (geminiContent.startsWith('```')) {
-        geminiContent = geminiContent.replace(/^```[a-zA-Z]*\n?|```$/g, '').trim();
-      }
-      let geminiQuiz = null;
-      let geminiParseError = null;
-      try {
-        geminiQuiz = JSON.parse(geminiContent);
-      } catch (err) {
-        geminiParseError = err instanceof Error ? err.message : String(err);
-      }
-      return {
-        quiz: geminiQuiz,
-        parseError: geminiParseError,
-        content: geminiContent,
-        geminiResponse: geminiJson
-      };
-    } catch (err) {
-      return { error: 'Failed to fetch Gemini response', details: err instanceof Error ? err.message : String(err) };
-    }
+  if (!OPENAI_API_KEY && !GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'Missing both OpenAI and Gemini API keys' });
   }
 
   const prompt = `
@@ -53,12 +14,39 @@ Return a JSON object with:
 - question: The question text
 - options: An array of 4 choices (1 correct + 3 distractors)
 - answer: The correct answer (must match one of the options exactly)
-
 Respond only with a JSON object.
 `;
 
-  try {
-    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+  async function fetchGemini(prompt: string) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      }
+    );
+    const data = await res.json();
+    let content = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+
+    // Strip markdown fences if present
+    if (content.trim().startsWith('```')) {
+      content = content.replace(/^```[a-zA-Z]*\n?|```$/g, '').trim();
+    }
+
+    let quiz = null;
+    let parseError = null;
+    try {
+      quiz = JSON.parse(content);
+    } catch (err) {
+      parseError = err instanceof Error ? err.message : String(err);
+    }
+
+    return { source: 'gemini', quiz, parseError, content };
+  }
+
+  async function fetchOpenAI(prompt: string) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -70,38 +58,39 @@ Respond only with a JSON object.
         temperature: 0.7,
       }),
     });
+    const data = await res.json();
 
-    const json = await aiRes.json();
-    const content = json.choices?.[0]?.message?.content || '{}';
+    let content = data.choices?.[0]?.message?.content || '{}';
     let quiz = null;
     let parseError = null;
-    let openaiError = json.error;
+    const error = data.error;
     try {
       quiz = JSON.parse(content);
     } catch (err) {
       parseError = err instanceof Error ? err.message : String(err);
     }
 
-    if (openaiError || parseError || !quiz || Object.keys(quiz).length === 0) {
-      // Fallback to Gemini if OpenAI fails
-      const geminiResult = await fetchGeminiQuiz(prompt);
-      res.status(200).json({
-        source: 'gemini',
-        ...geminiResult,
-        openaiError,
-        openaiContent: content,
-        openaiResponse: json
-      });
-    } else {
-      res.status(200).json({
-        source: 'openai',
-        quiz,
-        parseError,
-        content,
-        openaiResponse: json
-      });
+    return { source: 'openai', quiz, parseError, content, error };
+  }
+
+  try {
+    // Try OpenAI first
+    let result = null;
+    if (OPENAI_API_KEY) {
+      result = await fetchOpenAI(prompt);
     }
+
+    // If OpenAI failed or returned empty, try Gemini
+    if (!result || result.error || result.parseError || !result.quiz || Object.keys(result.quiz).length === 0) {
+      if (GEMINI_API_KEY) {
+        result = await fetchGemini(prompt);
+      } else {
+        return res.status(500).json({ error: 'Both OpenAI and Gemini failed or are unavailable.' });
+      }
+    }
+
+    res.status(200).json(result);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch AI response', details: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: 'Unexpected server error', details: err instanceof Error ? err.message : String(err) });
   }
 }
